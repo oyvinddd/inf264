@@ -6,7 +6,7 @@
         {
             "label": "build and run",
             "type": "shell",
-            "command": "python3 homework1.py",
+            "command": "python3 Homework\\ 1/homework1.py",
             "problemMatcher": [],
             "group": {
                 "kind": "build",
