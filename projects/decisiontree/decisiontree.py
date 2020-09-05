@@ -9,29 +9,6 @@ class Node():
         self.label = label
         self.children = children
 
-def learn(X, y, impurity_measure='entropy'):
-    if has_same_label(y):
-        return Node(y[0], None)
-    if has_identical_features(X):
-        yield
-
-def has_same_label(y):
-    if len(y) == 1:
-        return True
-    for label in y:
-        if label != y[0]:
-            return False
-    return True
-
-def has_identical_features(x):
-    if len(x) == 1:
-        return True
-    for data in x:
-        if data != x[0]:
-            return False
-    return True
-
-
 def calc_entropy(y, label):
     y_len = len(y)
     label_cnt = y.count(label)
@@ -56,6 +33,8 @@ def calc_entropy(x, y, idx):
     print(decisions)
     return col
 
+# def calc_ent():
+
 
 
 # Utility functions
@@ -67,10 +46,11 @@ def data_from_file(filename):
     with open(path, 'r') as reader:
         for line in reader.readlines():
             parts = line.rstrip().split(',')
-            y.append(parts.pop())
-            x.append(parts)
+            # we assume the decision column is binary (either 0 or 1)
+            y.append(int(parts.pop()))
+            # we assume all feature values are floating point
+            x.append([float(i) for i in parts])
     return x, y
 
-X, Y = data_from_file('tennis.csv')
-l = calc_entropy(X, Y, 3)
-#print(l)
+X, Y = data_from_file('data_banknote_authentication.txt')
+print(X)
