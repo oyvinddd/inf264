@@ -95,13 +95,12 @@ class DecisionTree:
         p_total_below = total_below / total
         p_total_above = total_above / total
         # calculate entropy for each of the two splits
-        print("ITERATION", p_below_no, p_below_yes, p_above_no, p_above_yes)
-        ent_below = -(p_below_no * math.log2(p_below_no) + p_below_yes * math.log2(p_below_yes))
-        ent_above = -(p_above_no * math.log2(p_above_no) + p_above_yes * math.log2(p_above_yes))
+        ent_below = -(self._log_or_zero(p_below_no) + self._log_or_zero(p_below_no))
+        ent_above = -(self._log_or_zero(p_above_no) + self._log_or_zero(p_above_yes))
         # return the sum of the two entropies times their weights
         return p_total_below * ent_below + p_total_above * ent_above
     
-    def _log_or_zero(percentage):
+    def _log_or_zero(self, percentage):
         if percentage == 0:
             return 0
         return percentage * math.log2(percentage)
