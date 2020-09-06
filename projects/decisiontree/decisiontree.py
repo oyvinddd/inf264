@@ -7,7 +7,7 @@ import sys
 
 class Node:
 
-    def __init__(self, label, left=None, right=None):
+    def __init__(self, label=None, left=None, right=None):
         self.label = label
         self.left = left
         self.right = right
@@ -18,22 +18,35 @@ class Node:
 class DecisionTree:
 
     def __init__(self):
-        self.tree = None
+        self.tree = Node()
 
     def learn(self, X, y, impurity_measure='entropy'):
         self._build_tree(X, y, self.tree)
 
     def _build_tree(self, x, y, node):
-        if self._has_unique_label(y):
-            print("unique label")
+        # defensive - check if data set is not empty
+        if not x or not y:
+            node = None
+            print("not x")
+            return
+        if self._has_same_label(y):
+            node = Node(str(y[0]))
             return
         if self._has_identical_features(x, y):
-            print("has identical features")
+            label = self._most_common_label(y)
+            node = Node(str(label))
             return
-        # calculate the i.g. and get index of the optimal feature
+        # get index of the feature with optimal i.g.
         opt_index = self._optimal_ig_index(x, y)
-        # split the data by the feature into two separate sets
+        # split the data into two separate sets (based on the feature)
         x1, y1, x2, y2 = self._split_data(x, y, opt_index)
+        # use feature index as the node name
+        node.label = str(opt_index)
+        node.left = Node()
+        node.right = Node()
+        # call the method recursively with the smaller data sets
+        self._build_tree(x1, y1, node.left)
+        self._build_tree(x2, y2, node.right)
 
     def _optimal_ig_index(self, x, y):
         # first, calculate the total entropy before the split
@@ -82,10 +95,16 @@ class DecisionTree:
         p_total_below = total_below / total
         p_total_above = total_above / total
         # calculate entropy for each of the two splits
+        print("ITERATION", p_below_no, p_below_yes, p_above_no, p_above_yes)
         ent_below = -(p_below_no * math.log2(p_below_no) + p_below_yes * math.log2(p_below_yes))
         ent_above = -(p_above_no * math.log2(p_above_no) + p_above_yes * math.log2(p_above_yes))
         # return the sum of the two entropies times their weights
         return p_total_below * ent_below + p_total_above * ent_above
+    
+    def _log_or_zero(percentage):
+        if percentage == 0:
+            return 0
+        return percentage * math.log2(percentage)
     
     def _split_data(self, x, y, split_index):
         x1, y1, x2, y2 = [], [], [], []
@@ -102,7 +121,7 @@ class DecisionTree:
                 y2.append(y[index])
         return x1, y1, x2, y2
     
-    def _has_unique_label(self, y):
+    def _has_same_label(self, y):
         for decision in y:
             if decision is not y[0]:
                 return False
@@ -117,6 +136,15 @@ class DecisionTree:
                 if value is not col[0]:
                     return False
         return True
+    
+    def _most_common_label(self, y):
+        no_count = 0
+        for d in y:
+            if d == 0:
+                no_count += 1
+        if no_count >= len(y) / 2:
+            return 0
+        return 1
 
 
 # utility function for loading data form file
@@ -136,7 +164,3 @@ def data_from_file(filename):
 X, Y = data_from_file('data_banknote_authentication.txt')
 dt = DecisionTree()
 dt.learn(X, Y)
-
-print(dt.tree)
-dt.test_build()
-print(dt.tree)
