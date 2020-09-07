@@ -6,8 +6,8 @@ import sys
 # 1.1 Implement a decision tree learning algorithm from scratch
 
 class Data:
-    def __init__(self, feature_index, mean):
-        self.feature_index = feature_index
+    def __init__(self, index, mean):
+        self.index = index
         self.mean = mean
 
 class Node:
@@ -33,7 +33,15 @@ class DecisionTree:
         self._build_tree(X, y, self.tree)
     
     def predict(self, x):
-        yield
+        return self._traverse_tree(x, self.tree)
+
+    def _traverse_tree(self, x, tree):
+        if tree.is_leaf():
+            return tree.label
+        val = x.pop(tree.data.index)
+        if val <= tree.data.mean:
+            return self._traverse_tree(x, tree.left)
+        return self._traverse_tree(x, tree.right)
 
     def _build_tree(self, x, y, node):
         if self._has_same_label(y):
@@ -57,12 +65,12 @@ class DecisionTree:
         node.label = str(index)
         node.data = Data(index, mean)
         # call the method recursively with the smaller data sets
-        if x1 and y1:
-            node.left = Node()
-            self._build_tree(x1, y1, node.left)
-        if x2 and y2:
-            node.right = Node()
-            self._build_tree(x2, y2, node.right)
+        # if x1[0]:
+        node.left = Node()
+        self._build_tree(x1, y1, node.left)
+        # if x2 and y2:
+        node.right = Node()
+        self._build_tree(x2, y2, node.right)
 
     def _optimal_ig_index(self, x, y):
         # first, calculate the total entropy before the split
@@ -214,3 +222,13 @@ t = dt.tree
 print_tree(t)
 
 # dt._calc_entropy(X)
+def traverse_tree(x, tree):
+    if tree.is_leaf():
+        return tree.label
+    val = x.pop(tree.data.index)
+    if val <= tree.data.mean:
+        return traverse_tree(x, tree.left)
+    return traverse_tree(x, tree.right)
+
+d = [-2.8391,-6.63,10.4849,-0.42113]
+print(dt.predict(d))
