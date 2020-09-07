@@ -149,7 +149,7 @@ class DecisionTree:
     # 1.2 Gini index
     def _calc_gini_index(self, x, y, i):
         # get the column with the feature values we want to calculate
-        feature = [e for e in x[i]]
+        feature = [e[i] for e in x]
         # calculate the mean (this is our splitting criteria)
         mean = stat.mean(feature)
         # count the number of no/yes decisions for data points below and above the mean
@@ -246,11 +246,11 @@ def print_tree(node, level=0):
         print(' ' * 4 * level + '->', node.label)
         print_tree(node.right, level + 1)
 
-X, Y = data_from_file('banknote_small_2.csv')
+X, Y = data_from_file('test.csv')
 dt = DecisionTree()
-dt.learn(X, Y, impurity_measure='gini')
+# dt.learn(X, Y, impurity_measure='gini')
 
-tree = dt.tree
-print_tree(tree)
+# tree = dt.tree
+# print_tree(tree)
 
-d = [-2.8391,10.4849,-6.63,-0.42113]
+# d = [-2.8391,10.4849,-6.63,-0.42113]
