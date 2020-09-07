@@ -28,8 +28,12 @@ class DecisionTree:
 
     def __init__(self):
         self.tree = Node()
+        self.impurity_measure = None
 
     def learn(self, X, y, impurity_measure='entropy'):
+        # store the impurity measure on an instance variable (for later use)
+        self.impurity_measure = impurity_measure
+        # call the (recursive) method to build a binary decision tree
         self._build_tree(X, y, self.tree)
     
     def predict(self, x):
@@ -57,22 +61,25 @@ class DecisionTree:
             else:
                 node.label = 'Yes'
             return
-        # get index of the feature with optimal i.g.
-        index, mean = self._optimal_ig_index(x, y)
+        # get index (and mean value for later use) for the feature with the optimal split
+        index, mean = self._optimal_split(x, y)
         # split the data into two separate sets (based on the feature)
         x1, y1, x2, y2 = self._split_data(x, y, index)
         # use feature index as the node name and the mean as the data
         node.label = str(index)
         node.data = Data(index, mean)
         # call the method recursively with the smaller data sets
-        # if x1[0]:
         node.left = Node()
         self._build_tree(x1, y1, node.left)
-        # if x2 and y2:
         node.right = Node()
         self._build_tree(x2, y2, node.right)
+    
+    def _optimal_split(self, x, y):
+        if self.impurity_measure == 'gini':
+            return self._optimal_gini_split(x, y)
+        return self._optimal_entropy_split(x, y)
 
-    def _optimal_ig_index(self, x, y):
+    def _optimal_entropy_split(self, x, y):
         # first, calculate the total entropy before the split
         total = len(y)
         num_no = y.count(0)
@@ -84,11 +91,23 @@ class DecisionTree:
         for i in range(len(x[0])):
             h_f, mean = self._calc_entropy(x, y, i)
             ig = h - h_f
+            # compare current i.g. to the max i.g.
             if ig > opt_ig:
                 opt_ig = ig
                 opt_index = i
                 opt_mean = mean
         return opt_index, opt_mean
+    
+    def _optimal_gini_split(self, x, y):
+        no_of_features = len(x[0])
+        min_gini_val, idx_of_min_gini, opt_mean = 1, 0, 0
+        for i in range(no_of_features):
+            gini, mean = self._calc_gini_index(x, y, i)
+            if gini < min_gini_val:
+                min_gini_val = gini
+                idx_of_min_gini = i
+                opt_mean = mean
+        return idx_of_min_gini, mean
 
     def _calc_entropy(self, x, y, i):
         # extract the column we care about from the matrix
@@ -127,6 +146,38 @@ class DecisionTree:
         total_ent = p_total_below * ent_below + p_total_above * ent_above
         return total_ent, mean
     
+    # 1.2 Gini index
+    def _calc_gini_index(self, x, y, i):
+        # get the column with the feature values we want to calculate
+        feature = [e for e in x[i]]
+        # calculate the mean (this is our splitting criteria)
+        mean = stat.mean(feature)
+        # count the number of no/yes decisions for data points below and above the mean
+        num_below_no, num_below_yes, num_above_no, num_above_yes = 0, 0, 0, 0
+        for index, value in enumerate(feature):
+            if value <= mean:
+                if y[index] == 0:
+                    num_below_no += 1
+                else:
+                    num_below_yes += 1
+            else:
+                if y[index] == 0:
+                    num_above_no += 1
+                else:
+                    num_above_yes += 1
+        # total number of decisions for each split
+        total_below = num_below_no + num_below_yes
+        total_above = num_above_no + num_above_yes
+        # calculate the separate gini impurities for the data points below and above the mean
+        gini_below = 1 - math.pow(num_below_no / total_below, 2) - math.pow(num_below_yes / total_below, 2)
+        gini_above = 1 - math.pow(num_above_no / total_above, 2) - math.pow(num_above_yes / total_above, 2)
+        # calculate weighted average of the two gini impurities
+        w_below = total_below / (total_below + total_above)
+        w_above = total_above / (total_above + total_below)
+        return gini_below * w_below + gini_above * w_above, mean
+            
+
+    
     def _log_or_zero(self, percentage):
         if percentage == 0:
             return 0
@@ -155,8 +206,6 @@ class DecisionTree:
         return True
     
     def _has_identical_features(self, X, y):
-        if not X:
-            return False
         for i in range(len(X[0])):
             col = [e[i] for e in X]
             for value in col:
@@ -187,14 +236,6 @@ def data_from_file(filename):
             x.append([float(i) for i in parts])
     return x, y
 
-def print_t(t, h):
-    if t == None:
-        return
-    print("Node at height: " + str(h) + ", " + str(t))
-    h += 1
-    print_t(t.left, h)
-    print_t(t.right, h)
-
 def print_data(X):
     for x in X:
         print(x)
@@ -205,30 +246,11 @@ def print_tree(node, level=0):
         print(' ' * 4 * level + '->', node.label)
         print_tree(node.right, level + 1)
 
-X, Y = data_from_file('data_banknote_authentication.csv')
+X, Y = data_from_file('banknote_small_2.csv')
 dt = DecisionTree()
-dt.learn(X, Y)
+dt.learn(X, Y, impurity_measure='gini')
 
-# tree = Node('0')
-# tree.left = Node('1')
-# tree.right = Node('2')
-# tree.left.left = Node('3')
-# tree.left.right = Node('4')
-# tree.right.left = Node('5')
-# tree.right.right = Node('6')
-t = dt.tree
-# print_t(t, 0)
+tree = dt.tree
+print_tree(tree)
 
-print_tree(t)
-
-# dt._calc_entropy(X)
-def traverse_tree(x, tree):
-    if tree.is_leaf():
-        return tree.label
-    val = x.pop(tree.data.index)
-    if val <= tree.data.mean:
-        return traverse_tree(x, tree.left)
-    return traverse_tree(x, tree.right)
-
-d = [-2.8391,-6.63,10.4849,-0.42113]
-print(dt.predict(d))
+d = [-2.8391,10.4849,-6.63,-0.42113]
