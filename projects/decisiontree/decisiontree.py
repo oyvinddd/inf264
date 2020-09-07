@@ -242,9 +242,9 @@ def print_data(X):
 
 def print_tree(node, level=0):
     if node != None:
-        print_tree(node.left, level + 1)
-        print(' ' * 4 * level + '->', node.label)
         print_tree(node.right, level + 1)
+        print(' ' * 4 * level + '->', node.label)
+        print_tree(node.left, level + 1)
 
 X, Y = data_from_file('banknote_small_2.csv')
 dt = DecisionTree()
