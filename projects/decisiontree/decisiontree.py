@@ -19,7 +19,7 @@ class Node:
     def __str__(self):
         if self.label != None:
             return self.label
-        return 'Null'
+        return ''
     def is_leaf(self):
         return self.left is None and self.right is None
 
@@ -54,7 +54,7 @@ class DecisionTree:
         # split the data into two separate sets (based on the feature)
         x1, y1, x2, y2 = self._split_data(x, y, index)
         # use feature index as the node name and the mean as the data
-        node.label = "split index: " + str(index)
+        node.label = str(index)
         node.data = Data(index, mean)
         # call the method recursively with the smaller data sets
         if x1 and y1:
@@ -131,6 +131,7 @@ class DecisionTree:
         for index, row in enumerate(x):
             # remove the value we are checking from the row
             value = row.pop(split_index)
+            # value = row[split_index]
             if value <= mean:
                 x1.append(row)
                 y1.append(y[index])
@@ -186,7 +187,17 @@ def print_t(t, h):
     print_t(t.left, h)
     print_t(t.right, h)
 
-X, Y = data_from_file('data_banknote_authentication.txt')
+def print_data(X):
+    for x in X:
+        print(x)
+
+def print_tree(node, level=0):
+    if node != None:
+        print_tree(node.left, level + 1)
+        print(' ' * 4 * level + '->', node.label)
+        print_tree(node.right, level + 1)
+
+X, Y = data_from_file('data_banknote_authentication.csv')
 dt = DecisionTree()
 dt.learn(X, Y)
 
@@ -198,4 +209,8 @@ dt.learn(X, Y)
 # tree.right.left = Node('5')
 # tree.right.right = Node('6')
 t = dt.tree
-print_t(t, 0)
+# print_t(t, 0)
+
+print_tree(t)
+
+# dt._calc_entropy(X)
