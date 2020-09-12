@@ -188,9 +188,8 @@ class DecisionTree:
         col = [e[split_index] for e in x]
         mean = stat.mean(col)
         for index, row in enumerate(x):
-            # remove the value we are checking from the row
-            value = row.pop(split_index)
-            # value = row[split_index]
+            # get the value we are splitting on
+            value = row[split_index]
             if value <= mean:
                 x1.append(row)
                 y1.append(y[index])
@@ -243,10 +242,10 @@ def print_data(X):
 def print_tree(node, level=0):
     if node != None:
         print_tree(node.right, level + 1)
-        print(' ' * 4 * level + '->', node.label)
+        print(' ' * 5 * level + '->', node.label)
         print_tree(node.left, level + 1)
 
-X, Y = data_from_file('banknote_small_2.csv')
+X, Y = data_from_file('data_banknote_authentication.csv')
 dt = DecisionTree()
 dt.learn(X, Y)
 
