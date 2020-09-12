@@ -40,11 +40,16 @@ class DecisionTree:
         return self._traverse_tree(x, self.tree)
 
     def _traverse_tree(self, x, tree):
+        # if we have reached a leaf, we are done
         if tree.is_leaf():
             return tree.label
-        val = x.pop(tree.data.index)
-        if val <= tree.data.mean:
+        value = x[tree.data.index]
+        if value <= tree.data.mean:
+            print("GOING left")
+            # if feature value is less than the mean, follow the left child node
             return self._traverse_tree(x, tree.left)
+        # if feature is larger than the mean, follow the right child node
+        print("GOING right")
         return self._traverse_tree(x, tree.right)
 
     def _build_tree(self, x, y, node):
@@ -245,8 +250,9 @@ def print_tree(node, level=0):
         print(' ' * 5 * level + '->', node.label)
         print_tree(node.left, level + 1)
 
-X, Y = data_from_file('data_banknote_authentication.csv')
+X, Y = data_from_file('banknote_small_2.csv')
 dt = DecisionTree()
 dt.learn(X, Y)
+print("Fraudulent? " + dt.predict([-1.8782,-6.5865,4.8486,-0.021566]))
 
 print_tree(dt.tree)
