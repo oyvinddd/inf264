@@ -27,11 +27,11 @@ class DecisionTree:
 
     def __init__(self):
         self.tree = Node()
-        self.impurity_measure = None
 
-    def learn(self, X, y, impurity_measure='entropy'):
-        # store the impurity measure on an instance variable (for later use)
+    def learn(self, X, y, impurity_measure='entropy', prune=False):
+        # store the impurity measure and prune on the instance for later use
         self.impurity_measure = impurity_measure
+        self.prune = prune
         # call the (recursive) method to build a binary decision tree
         self._build_tree(X, y, self.tree)
     
@@ -175,7 +175,11 @@ class DecisionTree:
         # calculate weighted average of the two gini impurities
         w_below = total_below / (total_below + total_above)
         w_above = total_above / (total_above + total_below)
-        return gini_below * w_below + gini_above * w_above, mean 
+        return gini_below * w_below + gini_above * w_above, mean
+
+    # 1.3 Add reduced-error pruning
+    def _do_error_pruning(self):
+        yield
     
     def _log_or_zero(self, percentage):
         if percentage == 0:
@@ -233,10 +237,6 @@ def data_from_file(filename):
             x.append([float(i) for i in parts])
     return x, y
 
-def print_data(X):
-    for x in X:
-        print(x)
-
 def print_tree(node, level=0):
     if node != None:
         print_tree(node.right, level + 1)
@@ -246,6 +246,5 @@ def print_tree(node, level=0):
 X, Y = data_from_file('banknote_small_2.csv')
 dt = DecisionTree()
 dt.learn(X, Y)
-print("Fraudulent? " + dt.predict([-1.8782,-6.5865,4.8486,-0.021566]))
 
 print_tree(dt.tree)
