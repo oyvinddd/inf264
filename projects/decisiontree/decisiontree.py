@@ -1,5 +1,6 @@
 import numpy as np
 import statistics as stat
+import random as rand
 import math
 import sys
 
@@ -29,11 +30,14 @@ class DecisionTree:
         self.tree = Node()
 
     def learn(self, X, y, impurity_measure='entropy', prune=False):
-        # store the impurity measure and prune on the instance for later use
+        # store the impurity measure on the instance for later use
         self.impurity_measure = impurity_measure
-        self.prune = prune
+        # split data into training and pruning (validation) sets
+        X, y, X_val, y_val = self._training_validation_split(X, y, prune)
         # call the (recursive) method to build a binary decision tree
         self._build_tree(X, y, self.tree)
+        # if pruning is enabled, do reduced-error pruning on the tree
+        self._prune_tree(X_val, y_val, prune)
     
     def predict(self, x):
         return self._traverse_tree(x, self.tree)
@@ -178,8 +182,21 @@ class DecisionTree:
         return gini_below * w_below + gini_above * w_above, mean
 
     # 1.3 Add reduced-error pruning
-    def _do_error_pruning(self):
+    def _prune_tree(self, X, y, prune):
+        # return early if pruning is not enabled
+        if not prune:
+            return
         yield
+    
+    def _training_validation_split(self, X, y, prune):
+        X_val, y_val = [], []
+        threshold = len(X) / 3
+        if prune:
+            while len(X_val) < threshold:
+                random_index = rand.randrange(len(X))
+                X_val.append(X.pop(random_index))
+                y_val.append(y.pop(random_index))
+        return X, y, X_val, y_val
     
     def _log_or_zero(self, percentage):
         if percentage == 0:
@@ -244,7 +261,12 @@ def print_tree(node, level=0):
         print_tree(node.left, level + 1)
 
 X, Y = data_from_file('banknote_small_2.csv')
+
+def print_a(X):
+    for x in X:
+        print(x)
+
 dt = DecisionTree()
 dt.learn(X, Y)
 
-print_tree(dt.tree)
+#print_tree(dt.tree)
