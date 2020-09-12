@@ -23,7 +23,6 @@ class Node:
     def is_leaf(self):
         return self.left is None and self.right is None
 
-
 class DecisionTree:
 
     def __init__(self):
@@ -43,13 +42,10 @@ class DecisionTree:
         # if we have reached a leaf, we are done
         if tree.is_leaf():
             return tree.label
-        value = x[tree.data.index]
-        if value <= tree.data.mean:
-            print("GOING left")
+        if x[tree.data.index] <= tree.data.mean:
             # if feature value is less than the mean, follow the left child node
             return self._traverse_tree(x, tree.left)
         # if feature is larger than the mean, follow the right child node
-        print("GOING right")
         return self._traverse_tree(x, tree.right)
 
     def _build_tree(self, x, y, node):
@@ -179,9 +175,7 @@ class DecisionTree:
         # calculate weighted average of the two gini impurities
         w_below = total_below / (total_below + total_above)
         w_above = total_above / (total_above + total_below)
-        return gini_below * w_below + gini_above * w_above, mean
-            
-
+        return gini_below * w_below + gini_above * w_above, mean 
     
     def _log_or_zero(self, percentage):
         if percentage == 0:
@@ -225,7 +219,6 @@ class DecisionTree:
         if no_count >= len(y) / 2:
             return 0
         return 1
-
 
 # utility function for loading data form file
 def data_from_file(filename):
