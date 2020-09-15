@@ -7,24 +7,29 @@ import sys
 # 1.1 Implement a decision tree learning algorithm from scratch
 
 class Data:
-    def __init__(self, index, mean, mcl):
+    def __init__(self, index, mean, ml):
         self.index = index
         self.mean = mean
-        # most common label
-        self.mcl = mcl
+        # majority label
+        self.ml = ml
     def __str__(self):
-        return "index: %s, mean: %s, mcl: %s" % (self.index, self.mean, self.mcl)
+        return "index: %s, mean: %s, mcl: %s" % (self.index, self.mean, self.ml)
 
 class Node:
-    def __init__(self, label=None, data=None, left=None, right=None):
+    def __init__(self, label=None, data=None, parent=None, left=None, right=None):
         self.label = label
         self.data = data
+        self.parent = parent
         self.left = left
         self.right = right
     def __str__(self):
-        return self.label
+        if self.is_leaf():
+            if self.label == 0:
+                return 'No'
+            return 'Yes'
+        return str(self.label)
     def is_leaf(self):
-        return self.left is None and self.right is None
+        return self.left == None and self.right == None
 
 class DecisionTree:
 
@@ -39,7 +44,8 @@ class DecisionTree:
         # call the (recursive) method to build a binary decision tree from the training data
         self._build_tree(X_train, y_train, self.tree)
         # if pruning is enabled, do reduced-error pruning on the tree
-        self._prune_tree(X_val, y_val, prune)
+        if prune:
+            self._prune_tree(X_val, y_val, self.tree)
     
     def predict(self, x):
         return self._traverse_tree(x, self.tree)
@@ -56,25 +62,28 @@ class DecisionTree:
 
     def _build_tree(self, x, y, node):
         if self._has_same_label(y):
-            node.label = str(y[0])
+            node.label = y[0]
             return
         if self._has_identical_features(x, y):
-            node.label = str(self._most_common_label(y))
+            label = self._most_common_label(y)
+            node.label = label
             return
         # most common label (used for pruning)
-        mcl = self._most_common_label(y)
+        ml = self._majority_label(y)
         # get index (and mean value for later use) for the feature with the optimal split
         index, mean = self._optimal_split(x, y)
         # split the data into two separate sets (based on the feature)
         x1, y1, x2, y2 = self._split_data(x, y, index)
         # use feature index as the node name and the mean as the data
-        node.label = str(index)
-        node.data = Data(index, mean, mcl)
+        node.label = index
+        node.data = Data(index, mean, ml)
         # call the method recursively with the smaller data sets
-        node.left = Node()
-        self._build_tree(x1, y1, node.left)
-        node.right = Node()
-        self._build_tree(x2, y2, node.right)
+        if len(y1) > 0:
+            node.left = Node(parent=node)
+            self._build_tree(x1, y1, node.left)
+        if len(y2) > 0:
+            node.right = Node(parent=node)
+            self._build_tree(x2, y2, node.right)
     
     def _optimal_split(self, x, y):
         if self.impurity_measure == 'gini':
@@ -148,7 +157,7 @@ class DecisionTree:
         total_ent = p_total_below * ent_below + p_total_above * ent_above
         return total_ent, mean
     
-    # 1.2 Gini index
+    # 1.2 - Gini index
     def _calc_gini_index(self, x, y, i):
         # get the column with the feature values we want to calculate
         feature = [e[i] for e in x]
@@ -178,18 +187,34 @@ class DecisionTree:
         w_above = total_above / (total_above + total_below)
         return gini_below * w_below + gini_above * w_above, mean
 
-    # 1.3 Add reduced-error pruning
-    # https://github.com/DennisHanyuanXu/Decision-Tree/blob/master/src/tree.py
-    def _prune_tree(self, X, y, prune):
-        # return early if pruning is not enabled
-        if not prune:
-            return
-        yield
+    # 1.3 - Add reduced-error pruning
+    def _prune_tree(self, X, y, tree):
+        if tree.is_leaf():
+            return self._count_label_errors(tree.label, y)
+        if not X:
+            return 0
+        x1, y1, x2, y2 = self._split_data(X, y, tree.data.index)
+        # accuracy of the left and right subtrees
+        err_l = self._prune_tree(x1, y1, tree.left)
+        err_r = self._prune_tree(x2, y2, tree.right)
+        # accuracy of the majority label
+        err_m = self._count_label_errors(tree.data.ml, y)
+        # prune subtree if accuracy of majority label is greater
+        if err_m < err_l + err_r:
+            # set the majority label as the node label and delete children
+            tree.label = tree.data.ml
+            tree.left = None
+            tree.right = None
+            return err_m
+        return err_l + err_r
+
+    def _count_label_errors(self, label, y):
+        return len(y) - y.count(label)
     
     def _training_validation_split(self, X, y, prune):
         X_val, y_val = [], []
-        threshold = len(X) / 3
         if prune:
+            threshold = len(X) / 3
             while len(X_val) < threshold:
                 random_index = rand.randrange(len(X))
                 X_val.append(X.pop(random_index))
@@ -230,7 +255,7 @@ class DecisionTree:
                     return False
         return True
     
-    def _most_common_label(self, y):
+    def _majority_label(self, y):
         no_count = 0
         for d in y:
             if d == 0:
@@ -258,17 +283,8 @@ def print_tree(node, level=0):
         print(' ' * 5 * level + '->', node)
         print_tree(node.left, level + 1)
 
-X, Y = data_from_file('banknote_small_2.csv')
-
-def print_a(X):
-    for x in X:
-        print(x)
+X, Y = data_from_file('data_banknote_authentication.csv')
 
 dt = DecisionTree()
-dt.learn(X, Y)
+dt.learn(X, Y, prune=False)
 print_tree(dt.tree)
-
-def count_leaves(tree):
-    if tree.is_leaf():
-        return 1
-    return count_leaves(tree.left) + count_leaves(tree.right)
