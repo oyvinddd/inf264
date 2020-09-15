@@ -7,9 +7,13 @@ import sys
 # 1.1 Implement a decision tree learning algorithm from scratch
 
 class Data:
-    def __init__(self, index, mean):
+    def __init__(self, index, mean, mcl):
         self.index = index
         self.mean = mean
+        # most common label
+        self.mcl = mcl
+    def __str__(self):
+        return "index: %s, mean: %s, mcl: %s" % (self.index, self.mean, self.mcl)
 
 class Node:
     def __init__(self, label=None, data=None, left=None, right=None):
@@ -18,9 +22,7 @@ class Node:
         self.left = left
         self.right = right
     def __str__(self):
-        if self.label != None:
-            return self.label
-        return ''
+        return self.label
     def is_leaf(self):
         return self.left is None and self.right is None
 
@@ -33,9 +35,9 @@ class DecisionTree:
         # store the impurity measure on the instance for later use
         self.impurity_measure = impurity_measure
         # split data into training and pruning (validation) sets
-        X, y, X_val, y_val = self._training_validation_split(X, y, prune)
-        # call the (recursive) method to build a binary decision tree
-        self._build_tree(X, y, self.tree)
+        X_train, y_train, X_val, y_val = self._training_validation_split(X, y, prune)
+        # call the (recursive) method to build a binary decision tree from the training data
+        self._build_tree(X_train, y_train, self.tree)
         # if pruning is enabled, do reduced-error pruning on the tree
         self._prune_tree(X_val, y_val, prune)
     
@@ -54,25 +56,20 @@ class DecisionTree:
 
     def _build_tree(self, x, y, node):
         if self._has_same_label(y):
-            if y[0] == 0:
-                node.label = 'No'
-            else:
-                node.label = 'Yes'
+            node.label = str(y[0])
             return
         if self._has_identical_features(x, y):
-            label = self._most_common_label(y)
-            if label == 0:
-                node.label = 'No'
-            else:
-                node.label = 'Yes'
+            node.label = str(self._most_common_label(y))
             return
+        # most common label (used for pruning)
+        mcl = self._most_common_label(y)
         # get index (and mean value for later use) for the feature with the optimal split
         index, mean = self._optimal_split(x, y)
         # split the data into two separate sets (based on the feature)
         x1, y1, x2, y2 = self._split_data(x, y, index)
         # use feature index as the node name and the mean as the data
         node.label = str(index)
-        node.data = Data(index, mean)
+        node.data = Data(index, mean, mcl)
         # call the method recursively with the smaller data sets
         node.left = Node()
         self._build_tree(x1, y1, node.left)
@@ -182,6 +179,7 @@ class DecisionTree:
         return gini_below * w_below + gini_above * w_above, mean
 
     # 1.3 Add reduced-error pruning
+    # https://github.com/DennisHanyuanXu/Decision-Tree/blob/master/src/tree.py
     def _prune_tree(self, X, y, prune):
         # return early if pruning is not enabled
         if not prune:
@@ -257,7 +255,7 @@ def data_from_file(filename):
 def print_tree(node, level=0):
     if node != None:
         print_tree(node.right, level + 1)
-        print(' ' * 5 * level + '->', node.label)
+        print(' ' * 5 * level + '->', node)
         print_tree(node.left, level + 1)
 
 X, Y = data_from_file('banknote_small_2.csv')
@@ -268,5 +266,9 @@ def print_a(X):
 
 dt = DecisionTree()
 dt.learn(X, Y)
+print_tree(dt.tree)
 
-#print_tree(dt.tree)
+def count_leaves(tree):
+    if tree.is_leaf():
+        return 1
+    return count_leaves(tree.left) + count_leaves(tree.right)
