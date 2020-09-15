@@ -13,7 +13,7 @@ class Data:
         # majority label
         self.ml = ml
     def __str__(self):
-        return "index: %s, mean: %s, mcl: %s" % (self.index, self.mean, self.ml)
+        return "index: %s, mean: %s, ml: %s" % (self.index, self.mean, self.ml)
 
 class Node:
     def __init__(self, label=None, data=None, parent=None, left=None, right=None):
@@ -267,8 +267,7 @@ class DecisionTree:
 # utility function for loading data form file
 def data_from_file(filename):
     x, y = [], []
-    path = sys.path[0] + '/data/' + filename
-    with open(path, 'r') as reader:
+    with open(filename, 'r') as reader:
         for line in reader.readlines():
             parts = line.rstrip().split(',')
             # we assume the decision column is binary (either 0 or 1)
