@@ -4,7 +4,7 @@ import random as rand
 import math
 import sys
 
-# 1.1 Implement a decision tree learning algorithm from scratch
+# 1.1 - Implement a decision tree learning algorithm from scratch
 
 class Data:
     def __init__(self, index, mean, ml):
@@ -46,6 +46,7 @@ class DecisionTree:
         # if pruning is enabled, do reduced-error pruning on the tree
         if prune:
             self._prune_tree(X_val, y_val, self.tree)
+        return self
     
     def predict(self, x):
         return self._traverse_tree(x, self.tree)
@@ -68,7 +69,7 @@ class DecisionTree:
             label = self._most_common_label(y)
             node.label = label
             return
-        # most common label (used for pruning)
+        # get majority label (used for pruning)
         ml = self._majority_label(y)
         # get index (and mean value for later use) for the feature with the optimal split
         index, mean = self._optimal_split(x, y)
@@ -214,6 +215,7 @@ class DecisionTree:
     def _training_validation_split(self, X, y, prune):
         X_val, y_val = [], []
         if prune:
+            # 1/3 of the data set is used as validation data
             threshold = len(X) / 3
             while len(X_val) < threshold:
                 random_index = rand.randrange(len(X))
@@ -276,14 +278,18 @@ def data_from_file(filename):
             x.append([float(i) for i in parts])
     return x, y
 
+# Utility function for printing the decision tree to standard output
 def print_tree(node, level=0):
     if node != None:
         print_tree(node.right, level + 1)
         print(' ' * 5 * level + '->', node)
         print_tree(node.left, level + 1)
 
-X, Y = data_from_file('data_banknote_authentication.csv')
 
-dt = DecisionTree()
-dt.learn(X, Y, prune=False)
+# Program execution
+#   1. load data from file
+#   2. Create and initialize a decision tree and dall the `learn` function
+#   3. Print the built decision tree to the console
+X, Y = data_from_file('data_banknote_authentication.csv')
+dt = DecisionTree().learn(X, Y, prune=False)
 print_tree(dt.tree)
