@@ -1,0 +1,1 @@
+To run the program, just type the command "python decisiontree.py" into a python enabled console.
