@@ -292,3 +292,9 @@ def print_tree(node, level=0):
 X, Y = data_from_file('data_banknote_authentication.csv')
 dt = DecisionTree().learn(X, Y, prune=False)
 print_tree(dt.tree)
+
+# 1.4 - Evaluate your algorithm
+# ...
+
+# 1.5 - Compare to an existing implementation
+# ...
