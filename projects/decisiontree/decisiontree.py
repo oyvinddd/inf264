@@ -16,10 +16,9 @@ class Data:
         return "index: %s, mean: %s, ml: %s" % (self.index, self.mean, self.ml)
 
 class Node:
-    def __init__(self, label=None, data=None, parent=None, left=None, right=None):
+    def __init__(self, label=None, data=None, left=None, right=None):
         self.label = label
         self.data = data
-        self.parent = parent
         self.left = left
         self.right = right
     def __str__(self):
@@ -80,10 +79,10 @@ class DecisionTree:
         node.data = Data(index, mean, ml)
         # call the method recursively with the smaller data sets
         if len(y1) > 0:
-            node.left = Node(parent=node)
+            node.left = Node()
             self._build_tree(x1, y1, node.left)
         if len(y2) > 0:
-            node.right = Node(parent=node)
+            node.right = Node()
             self._build_tree(x2, y2, node.right)
     
     def _optimal_split(self, x, y):
