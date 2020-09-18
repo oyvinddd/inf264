@@ -2,7 +2,6 @@ import numpy as np
 import statistics as stat
 import random as rand
 import math
-import sys
 
 # 1.1 - Implement a decision tree learning algorithm from scratch
 
@@ -36,10 +35,13 @@ class DecisionTree:
         self.tree = Node()
 
     def learn(self, X, y, impurity_measure='entropy', prune=False):
+        # create a deep copy of the data set (we don't want to modify the original X and y)
+        X_cp = [[i for i in point] for point in X]
+        y_cp = [i for i in y]
         # store the impurity measure on the instance for later use
         self.impurity_measure = impurity_measure
         # split data into training and pruning (validation) sets
-        X_train, y_train, X_val, y_val = self._training_validation_split(X, y, prune)
+        X_train, y_train, X_val, y_val = self._training_validation_split(X_cp, y_cp, prune)
         # call the (recursive) method to build a binary decision tree from the training data
         self._build_tree(X_train, y_train, self.tree)
         # if pruning is enabled, do reduced-error pruning on the tree
@@ -285,10 +287,16 @@ def print_tree(node, level=0):
         print_tree(node.left, level + 1)
 
 
-# Program execution
-#   1. load data from file
-#   2. Create and initialize a decision tree and dall the `learn` function
-#   3. Print the built decision tree to the console
-X, Y = data_from_file('data_banknote_authentication.csv')
-dt = DecisionTree().learn(X, Y, prune=False)
-print_tree(dt.tree)
+
+# test data
+X, y = data_from_file('data_banknote_authentication.csv')
+
+# create decision tree and call the learn method
+dt = DecisionTree().learn(X, y, impurity_measure='entropy', prune=True)
+# predict the validity of a bank note
+validity = dt.predict([4.1529,-3.9358,2.8633,-0.017686,0])
+
+if validity == 1:
+    print("Fake")
+else:
+    print("Authentic")
