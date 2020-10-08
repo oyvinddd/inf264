@@ -44,6 +44,7 @@ class Model:
 def preprocess_data(X):
     # create new features from the existing feature set:
     new_features = {
+        # 'day_of_week': [],  # numerical feature
         'hour': [],         # numerical feature
         'is_weekend': [],   # categorical/binary feature
         'is_holiday': []    # categorical/binary feature
@@ -121,7 +122,7 @@ def execute_model(model, X, y, unseen_datapoints):
     predictions = md.predict(unseen_datapoints)
     print("Predictions: " + str(predictions))
     # score of the given model
-    score = model.score(X_test, y_test)
+    score = md.score(X_test, y_test)
     print('Score: ' + str(score))
 
     # make prediciton on training data
@@ -139,7 +140,7 @@ linear_regression = Model(LinearRegression(), name='Linear Regression')
 regression_tree = Model(DecisionTreeRegressor(criterion="mse"), name='Regression Tree')
 neural_network = Model(MLPRegressor(), name='Neural Network')
 # load data from file and preprocess
-X, y = load_and_preprocess_data('data_small.csv')
+X, y = load_and_preprocess_data('data.csv')
 # create a set of unseen data we want to predict
 datapoints = [
     [2015,12,17,19] # 2015,12,17,19,106,142,248
