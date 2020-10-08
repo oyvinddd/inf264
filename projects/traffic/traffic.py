@@ -1,30 +1,26 @@
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-import sklearn as sk
 from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor
+from sklearn.neural_network import MLPRegressor
 from sklearn.model_selection import train_test_split
+from random import randint
+import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import datetime as dt
 import holidays
 
-# Task 1: Predicting traffic
-# In this project, we practice constructing regression models by predicting traffic.
-
-# Quantities: # of cars crossing, # of cars towards city center and # of cars towards danmarksplass
-# Features: year, month, day and time
-
 class Model:
-    def __init__(self, model):
+    def __init__(self, model, name=None):
         self.model = model
+        self.name = name
     def learn(self, X_train, y_train):
         self.model.fit(X_train, y_train)
         return self
     def predict(self, dps):
         new_dp = self._map_datapoints(dps)
-        print("new dP: " + str(new_dp))
         return self.model.predict(new_dp)
+    def score(self, X, y):
+        return self.model.score(X, y)
     def _map_datapoints(self, dps):
         new_dps = []
         for dp in dps:
@@ -35,8 +31,6 @@ class Model:
             is_holiday = date_is_holiday(date)
             new_dps.append([dp[3], is_weekend, is_holiday])
         return new_dps
-
-
 
 # hyper parameter = (e.g.) K_nn
 
@@ -61,8 +55,7 @@ def preprocess_data(X):
         is_holiday = date_is_holiday(date)
         new_features['is_weekend'].append(is_weekend)
         new_features['is_holiday'].append(is_holiday)
-    X_new = pd.DataFrame(new_features, columns=['hour', 'is_weekend', 'is_holiday'])
-    return X_new
+    return pd.DataFrame(new_features, columns=['hour', 'is_weekend', 'is_holiday'])
 
 # helper function for loading data from file into a pandas DataFrame
 def load_data(filename):
@@ -72,8 +65,11 @@ def load_data(filename):
     y = data.loc[:, 'Volum til SNTR':'Volum totalt']
     return X, y
 
+# wrapper function to return preprocessed data from csv
 def load_and_preprocess_data(filename):
-    yield
+    X, y = load_data(filename)
+    X_new = preprocess_data(X)
+    return X_new, y
 
 # helper function that returns a datetime object from a DataFrame row
 def date_from_row(row):
@@ -110,39 +106,45 @@ def plot_data(X, y):
 
 # 1.3 Modelling and evaluation
 
-# function for learning a linear regression model
-def learn_lr():
-    yield
-    # lr = LinearRegression()
-    # lr.fit(X_train, y_train)
-    # p = lr.predict(X_test)
-
-# function for learning a regression tree model
-def learn_models(X, y):
-    # extreact column with the total volume of cars
+# function for learning and making predictions on a given model
+def execute_model(model, X, y, unseen_datapoints):
+    print('Executing model ' + model.name + '...')
+    # split the quantities into separate sets
+    y_sntr = y.loc[:, 'Volum til SNTR']
+    y_dnp = y.loc[:, 'Volum til DNP']
     y_total = y.loc[:, 'Volum totalt']
-
     # split the data set into training and test sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y_total, test_size=0.3, shuffle=True, random_state=667)
-    
-    # dt = DecisionTreeRegressor(criterion="mse")
-    # dt = dt.fit(X_train, y_train)
-    
-    dp = [2015,12,17,19] # 2015,12,17,19,106,142,248
-    # pr = dt.predict([dp])
-    # print(pr)
+    X_train, X_test, y_train, y_test = train_test_split(X, y_total, test_size=0.3, shuffle=True, random_state=randint(100, 300))
+    # learn model using the training data
+    md = model.learn(X_train, y_train)
+    # make predictions on unseen data
+    predictions = md.predict(unseen_datapoints)
+    print("Predictions: " + str(predictions))
+    # score of the given model
+    score = model.score(X_test, y_test)
+    print('Score: ' + str(score))
 
-    md = Model(DecisionTreeRegressor(criterion="mse"))
-    md = md.learn(X_train, y_train)
-    print(md.predict([dp]))
+    # make prediciton on training data
+    # predictions = md.predict(X_train)
+    # good_train_predicitons = (predictions == y_train)
+    # train_accuracy = np.sum(good_train_predicitons) / len(X_train)
 
 
+#######################
+# EXECUTE THE PROGRAM #
+#######################
 
-# run the program
-
-# load data
-X, y = load_data('data_small.csv')
-# preprocess data
-X_new = preprocess_data(X)
-# call function for learning models
-learn_models(X_new, y)
+# create our three models
+linear_regression = Model(LinearRegression(), name='Linear Regression')
+regression_tree = Model(DecisionTreeRegressor(criterion="mse"), name='Regression Tree')
+neural_network = Model(MLPRegressor(), name='Neural Network')
+# load data from file and preprocess
+X, y = load_and_preprocess_data('data_small.csv')
+# create a set of unseen data we want to predict
+datapoints = [
+    [2015,12,17,19] # 2015,12,17,19,106,142,248
+]
+# learn each of the three models separately
+execute_model(linear_regression, X, y, datapoints)
+execute_model(regression_tree, X, y, datapoints)
+execute_model(neural_network, X, y, datapoints)
