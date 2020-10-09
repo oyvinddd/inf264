@@ -1,6 +1,5 @@
-from sklearn.linear_model import LinearRegression
-from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeRegressor
+from sklearn.svm import SVR
 from sklearn.neural_network import MLPRegressor
 from sklearn.model_selection import train_test_split
 from random import randint
@@ -43,16 +42,19 @@ def preprocess_data(X):
     new_features = {
         'hour_of_day': [],  # numerical feature
         'is_weekend': [],   # categorical/binary feature
-        'is_holiday': []    # categorical/binary feature
+        'is_holiday': [],   # categorical/binary feature
+        'is_gsh': []        # categorical/binary feature (gsh = general staff holiday) 
     }
     for index, row in X.iterrows():
         date = date_from_row(row)
         is_weekend = date_is_weekend(date)
         is_holiday = date_is_holiday(date)
+        is_gsh = date_is_gsh(date)
         new_features['hour_of_day'].append(row['Fra_time'])
         new_features['is_weekend'].append(is_weekend)
         new_features['is_holiday'].append(is_holiday)
-    return pd.DataFrame(new_features, columns=['hour_of_day', 'is_weekend', 'is_holiday'])
+        new_features['is_gsh'].append(is_gsh)
+    return pd.DataFrame(new_features, columns=['hour_of_day', 'is_weekend', 'is_holiday', 'is_gsh'])
 
 # helper function for loading data from file into a pandas DataFrame
 def load_data(filename):
@@ -85,6 +87,14 @@ def date_is_holiday(date):
         return True
     return False
 
+# helper function for checking if a given date is a Norwegian general staff holiday
+def date_is_gsh(date):
+    # the first element returned from isocalendar() is the week number
+    week_num = date.isocalendar()[1]
+    if week_num in [28, 29, 30]:
+        return True
+    return False
+
 # 1.3 Modelling and evaluation
 
 def train_and_evaluate_model(model, X, y):
@@ -104,10 +114,10 @@ def train_and_evaluate_model(model, X, y):
 #######################
 
 # create our three models
-linear_regression = Model(LinearRegression(), name='Linear Regression')
+support_vect_mach = Model(SVR(), name='Support Vector Machine')
 logistic_regression = Model(LogisticRegression(), name='Logistic Regression')
 regression_tree = Model(DecisionTreeRegressor(criterion="mse"), name='Regression Tree')
-neural_network = Model(MLPRegressor(), name='Neural Network')
+neural_network = Model(MLPRegressor(hidden_layer_sizes=(300,), activation='relu', solver='adam', max_iter=800), name='Neural Network')
 
 # load data from file and preprocess
 X, y = load_and_preprocess_data('data.csv')
@@ -116,12 +126,8 @@ y_sntr = y.loc[:, 'Volum til SNTR']
 y_dnp = y.loc[:, 'Volum til DNP']
 
 # learn and evaluate each of the three models separately
-acc_lr = train_and_evaluate_model(linear_regression, X, y_total)
+acc_vm = train_and_evaluate_model(support_vect_mach, X, y_total)
 acc_rt = train_and_evaluate_model(regression_tree, X, y_total)
 acc_nn = train_and_evaluate_model(neural_network, X, y_total)
-print(acc_lr, acc_rt, acc_nn)
-# execute_model(linear_regression, X, y, datapoints)
-#execute_model(logistic_regression, X, y, datapoints)
-# execute_model(regression_tree, X, y, datapoints)
-# execute_model(neural_network, X, y, datapoints)
+print(acc_vm, acc_lr, acc_rt, acc_nn)
 

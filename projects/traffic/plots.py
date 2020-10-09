@@ -115,8 +115,28 @@ def plot_day(date, data):
     # plt.xlabel('Tid')
     # plt.ylabel('Volum')
     # plt.legend(['Total', 'SNTR', 'DNP'])
+    plt.ylabel('Volume')
+    plt.xlabel('Time of day')
+    plt.title('December 25th, 2019')
     plt.show()
+
+def plot_months(year, data):
+    year = data[data.År == year]
+
+    months = {}
+    for index, row in year.iterrows():
+        year, month, day, hour = row['År'], row['Måned'], row['Dag'], row['Fra_time']
+        date = dt.datetime(year, month, day, hour=hour)
+        volum_totalt = row['Volum totalt']
+        if month not in months:
+            months[month] = volum_totalt
+        else:
+            months[month] += volum_totalt
+    print(months)
+
+
 
 
 data = pd.read_csv('data.csv')
-plot_day(dt.datetime(2018, 5, 2), data)
+# plot_day(dt.datetime(2019, 1, 25), data)
+plot_months(2019, data)
