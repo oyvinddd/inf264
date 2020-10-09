@@ -120,9 +120,8 @@ def plot_day(date, data):
     plt.title('December 25th, 2019')
     plt.show()
 
-def plot_months(year, data):
+def volume_by_month(year, data):
     year = data[data.År == year]
-
     months = {}
     for index, row in year.iterrows():
         year, month, day, hour = row['År'], row['Måned'], row['Dag'], row['Fra_time']
@@ -132,11 +131,22 @@ def plot_months(year, data):
             months[month] = volum_totalt
         else:
             months[month] += volum_totalt
-    print(months)
+    return months
 
 
-
+# plot months:
 
 data = pd.read_csv('data.csv')
 # plot_day(dt.datetime(2019, 1, 25), data)
-plot_months(2019, data)
+m16 = volume_by_month(2016, data).values()
+m17 = volume_by_month(2017, data).values()
+m18 = volume_by_month(2018, data).values()
+m19 = volume_by_month(2019, data).values()
+
+plt.xlabel('Months')
+x_labels = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+plt.plot(x_labels, m16, color='red')
+plt.plot(x_labels, m17, color='blue')
+plt.plot(x_labels, m18, color='green')
+plt.plot(x_labels, m19, color='pink')
+plt.show()

@@ -6,6 +6,7 @@ from random import randint
 import pandas as pd
 import numpy as np
 import datetime as dt
+import matplotlib.pyplot as plt
 import holidays
 
 class Model:
@@ -97,37 +98,75 @@ def date_is_gsh(date):
 
 # 1.3 Modelling and evaluation
 
-def train_and_evaluate_model(model, X, y):
+# helper function for picking the best model amongst all three models
+def select_best_model(X_train, y_train, X_val, y_val):
+    # create our three models
+    sv = Model(SVR(kernel='rbf'), name='Support Vector Machine')
+    rt = Model(DecisionTreeRegressor(criterion="mse"), name='Regression Tree')
+    nn = Model(MLPRegressor(hidden_layer_sizes=(300,), activation='relu', solver='adam', max_iter=500), name='Neural Network')
+    # learn and evaluate each of the three models separately
+    sv, acc_sv = train_and_evaluate_model(sv, X_train, y_train, X_val, y_val)
+    rt, acc_rt = train_and_evaluate_model(rt, X_train, y_train, X_val, y_val)
+    nn, acc_nn = train_and_evaluate_model(nn, X_train, y_train, X_val, y_val)
+    print(acc_sv, acc_rt, acc_nn)
+    # determine which model had the best accuracy and return it
+    if acc_sv < acc_rt or acc_sv < acc_nn:
+        if acc_rt < acc_nn:
+            return nn, acc_nn # neural network won
+        return rt, acc_rt # regression tree won
+    return sv, acc_sv # support vector machine won
+
+# helper function for training and evaluating a given model based on training and validation data
+def train_and_evaluate_model(model, X_train, y_train, X_val, y_val):
     print('Training and evaluating model %s...' % model.name)
-    # split the data set into training and test sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, shuffle=True, random_state=randint(100, 300))
     # apply training data on the model
     model = model.learn(X_train, y_train)
-    # to evaluate the performance of the model, we make predictions on the same data set we used for training
-    y_pred = model.predict(X_test)
-    # return the score of the model base on the mean accuracy
-    return model.score(X_test, y_test)
+    # return model, as well as the score of the model base on the mean accuracy
+    return model, model.score(X_val, y_val)
+
+# function for running and instance. An instance is just the scenario we're currently looking at (sentrum, sntr or dnp)
+def run_instance(X, y, instance_desc):
+    print(instance_desc)
+    # split the data into train and a concatenation of validation and test sets with a ratio of 0.7/0.3
+    X_train, X_val_test, y_train, y_val_test = train_test_split(X, y,  test_size=0.3, shuffle=True, random_state=666)
+    # further split set into validation and test sets with a ratio of 0.5/0.5
+    X_val, X_test, y_val, y_test = train_test_split(X_val_test, y_val_test, test_size=0.5, shuffle=True, random_state=667)
+    # call function for determining the best model based on the training data
+    best_model, best_acc = select_best_model(X_train, y_train, X_val, y_val)
+    print('Best model was %s' % best_model.name)
+    # now we can estimate the performance of the best model on unseen (test) data
+    print('Estimating performance of %s on unseen data...' % best_model.name)
+    y_pred = best_model.predict(X_test)
+    score = best_model.score(X_test, y_test)
+    print('Score: ' + str(score))
+
+# Unfinished - function for visualizing prediction
+def vizualize_prediction(X, y, y_pred):
+    yield
+    # visualize prediction
+    # X_grid = X_test.reshape((len(X_test), 1))
+    # print(X_test.loc[:, 'hour_of_day'])
+    # plt.scatter(X.loc[:, 'Fra_time'], y, color='red')
+    # plot predicted data 
+    # plt.plot(X_grid, y_pred, color = 'blue') 
+    # plt.show()
 
 
 #######################
 # EXECUTE THE PROGRAM #
 #######################
 
-# create our three models
-support_vect_mach = Model(SVR(), name='Support Vector Machine')
-logistic_regression = Model(LogisticRegression(), name='Logistic Regression')
-regression_tree = Model(DecisionTreeRegressor(criterion="mse"), name='Regression Tree')
-neural_network = Model(MLPRegressor(hidden_layer_sizes=(300,), activation='relu', solver='adam', max_iter=800), name='Neural Network')
+# load and preprocess data from file
+X, y = load_data('data.csv')
+X_new = preprocess_data(X)
 
-# load data from file and preprocess
-X, y = load_and_preprocess_data('data.csv')
+# split the different quantities
 y_total = y.loc[:, 'Volum totalt']
 y_sntr = y.loc[:, 'Volum til SNTR']
 y_dnp = y.loc[:, 'Volum til DNP']
 
-# learn and evaluate each of the three models separately
-acc_vm = train_and_evaluate_model(support_vect_mach, X, y_total)
-acc_rt = train_and_evaluate_model(regression_tree, X, y_total)
-acc_nn = train_and_evaluate_model(neural_network, X, y_total)
-print(acc_vm, acc_lr, acc_rt, acc_nn)
+# run our three instances (total, sntr and dnp)
+run_instance(X_new, y_total, 'Running instance for total # of cars...')
+run_instance(X_new, y_sntr, 'Running instance for # of cars towards SNTR...')
+run_instance(X_new, y_dnp, 'Running instance for # of cars towards DNP...')
 
