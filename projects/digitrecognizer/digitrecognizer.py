@@ -34,6 +34,7 @@ def to_binary_values(image_row):
             image_row[index] = 0
     return image_row
 
+# TODO: not used in current model selection. consider removing.
 def train_validation_test_split(X, y):
     # do train, validation test split
     X_train, X_val_test, y_train, y_val_test = train_test_split(X, y, test_size=0.3, shuffle=True, random_state=667)
@@ -46,6 +47,19 @@ def preprocess_and_predict(model, datapoints):
         dp = to_binary_values(dp)
     return model.predict(datapoints)
 
+def select_best_model(classifiers, X_train, X_val, y_train, y_val):
+    # TODO: k-folds cross validation: https://www.youtube.com/watch?v=6dbrR-WymjI&feature=youtu.be&ab_channel=DataSchool
+    # https://towardsdatascience.com/why-and-how-to-cross-validate-a-model-d6424b45261f
+    best_acc, best_model = 0, None
+    for name, clf in classifiers:
+        c = clf
+        c.fit(X_train, y_train)
+        acc = c.score(X_val, y_val)
+        print(name, str(acc))
+        if best_acc < acc:
+            best_model = c
+            best_acc = acc
+    return best_model
 
 # helper function for displaying image to user
 def show_image(X_row):
@@ -70,15 +84,19 @@ X, y = load_and_preprocess_data(
 )
 
 # split data into training, validation and test sets
-X_train, X_val, X_test, y_train, y_val, y_test = train_validation_test_split(X, y)
-print(X_train[0])
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+#X_train, X_val, X_test, y_train, y_val, y_test = train_validation_test_split(X, y)
 
-# support vector machine classifier
-md = SVC(kernel='linear')
-md = md.fit(X_train, y_train)
+# create our 3 candidate classifiers
+classifiers = [
+    ('Decision Tree', DecisionTreeClassifier()), # decision tree
+    ('Neural Network', MLPClassifier()), # neural network
+    ('Support Vector Machine', SVC()) # support vector machine
+]
 
-predicitons = md.predict(X_val)
-print(predicitons)
+# select the model with the best accuracy on the validation set
+best_model = select_best_model(classifiers, X_train, X_test, y_train, y_test)
+print(best_model)
 
 datapoints = [
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -86,7 +104,7 @@ datapoints = [
     ,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     ,183,238,16,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,182
-    ,254,83,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,182,255
+    ,254,83,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,182,25
     ,83,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,11,206,239,22
     ,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,85,254,234,0,0,0
     ,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,135,254,234,0,0,0,0,
@@ -109,4 +127,5 @@ datapoints = [
     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,0,0,0]]
 
-print('Prediction: ' + str(preprocess_and_predict(md, datapoints)))
+print('Prediction: ' + str(preprocess_and_predict(best_model, datapoints)))
+
