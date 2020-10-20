@@ -1,1 +1,4 @@
 handwritten_digits_images.csv
+handwritten_digits_images_small.csv
+handwritten_digits_labels.csv
+handwritten_digits_labels_small.csv
