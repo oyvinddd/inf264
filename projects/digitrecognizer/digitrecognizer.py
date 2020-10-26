@@ -4,7 +4,6 @@ from sklearn.metrics import accuracy_score
 from sklearn.neural_network import MLPClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -58,7 +57,7 @@ def create_candidate_models(X, y):
     #X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=667)
     # decision tree
     dt = DecisionTreeClassifier(
-        ccp_alpha=0.002,
+        ccp_alpha=0.001,
         random_state=40,
         criterion='entropy'
     )
@@ -69,8 +68,7 @@ def create_candidate_models(X, y):
     models = [
         ('Decision Tree', dt),
         ('Neural Network', nn),
-        ('Support Vector Machine', vm),
-        ('K-Nearest Neighbour', KNeighborsClassifier(n_neighbors=20))
+        ('Support Vector Machine', vm)
     ]
     return models
 
@@ -119,9 +117,9 @@ def preprocess_and_predict(model, datapoints, should_downsample=False):
 """We use cross-validation to help us select the best model"""
 def select_best_model(models, X, y, no_of_folds=10):
     best_score, best_model = 0, None
-    # the avg. testing accuracy (aka the cross validated acc.) is used as the estimate of out of sample acc.
-    # the cross_val_score function takes care of splitting the data set, so we pass it the whole X and y
-    # use 10-fold cross validation
+    # the avg. testing accuracy (aka the cross validated acc.) is used as the estimate of out of sample accuracy.
+    # the cross_val_score function takes care of splitting the data set, so we pass it the whole X and y sets.
+    # a 10-fold cross-validation is generally known to perform well, so use 10 as a default value.
     for name, model in models:
         scores = cross_val_score(model, X, y, cv=no_of_folds, scoring='accuracy')
         # calculate the mean score from all the 10 scores
@@ -158,8 +156,8 @@ should_downsample_image = True
 
 # load data and do preprocessing
 X, y = load_and_preprocess_data(
-    images_file='handwritten_digits_images_small.csv',
-    labels_file='handwritten_digits_labels_small.csv',
+    images_file='handwritten_digits_images.csv',
+    labels_file='handwritten_digits_labels.csv',
     should_downsample=should_downsample_image
 )
 
@@ -167,7 +165,7 @@ X, y = load_and_preprocess_data(
 models = create_candidate_models(X, y)
 
 # select the model with the best CV mean score
-best_model = select_best_model(models, X, y, no_of_folds=5)
+best_model = select_best_model(models, X, y, no_of_folds=10)
 
 # now that we have our best model, we can fit it with the data
 best_model = best_model.fit(X, y)
@@ -196,7 +194,7 @@ image = [
     0,0,0,0,60,142,253,253,226,39,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 ]
-# make predicitons on unseen data
+# predict the class of the above image
 predictions = preprocess_and_predict(
     model=best_model, 
     datapoints=[image], 
