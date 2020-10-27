@@ -53,15 +53,15 @@ def downsample_image(image_row):
     return downsampled_image.reshape(196)
 
 """Create and initialize all three candidate models"""
-def create_candidate_models(X, y):
+def create_candidate_models(X, y, tune_params=True):
     # split data set into training and testing sets
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=667)
     # decision tree
-    dt = create_and_tune_dt(X_train, y_train)
+    dt = create_and_init_dt(X_train, y_train, tune_params)
     # neural network
-    nn = create_and_tune_nn(X_train, y_train)
+    nn = create_and_init_nn(X_train, y_train, tune_params)
     # support vector machine
-    vm = create_and_tune_svc(X_train, y_train)
+    vm = create_and_init_svc(X_train, y_train, tune_params)
     models = [
         ('Decision Tree', dt),
         ('Neural Network', nn),
@@ -70,11 +70,13 @@ def create_candidate_models(X, y):
     return models
 
 """Use grid search to tune a decision tree model and return it"""
-def create_and_tune_dt(X_train, y_train):
+def create_and_init_dt(X_train, y_train, tune_params):
+    if not tune_params:
+        return DecisionTreeClassifier(random_state=40)
     # define the hyperparameters we want to evaluate
     tuning_params = {'criterion': ['gini', 'entropy']}
     # use grid search to find the best combination of hyperparameters for our model
-    clf = GridSearchCV(DecisionTreeClassifier(random_state=40), tuning_params, n_jobs=-1, cv=5, return_train_score=False)
+    clf = GridSearchCV(DecisionTreeClassifier(random_state=40), tuning_params, cv=3, return_train_score=False)
     clf.fit(X_train, y_train)
     best_params = clf.best_params_
     # create our final model and configure it with the best params
@@ -86,17 +88,17 @@ def create_and_tune_dt(X_train, y_train):
     return decision_tree
 
 """Use grid search to tune a neural network model and return it"""
-def create_and_tune_nn(X_train, y_train):
+def create_and_init_nn(X_train, y_train, tune_params):
+    if not tune_params:
+        return MLPClassifier(max_iter=500)
     # define the hyperparameters we want to evaluate
     tuning_params = {
-        #'hidden_layer_sizes': [(50,50,50), (50,100,50), (100,)],
         'activation': ['tanh', 'relu'],
         'solver': ['sgd', 'adam'],
-        #'alpha': [0.0001, 0.05],
-        'learning_rate': ['constant','adaptive'],
+        'learning_rate': ['constant','adaptive']
     }
     # use grid search to find the best combination of hyperparameters for our model
-    clf = GridSearchCV(MLPClassifier(max_iter=500), tuning_params, n_jobs=-1, cv=5, return_train_score=False)
+    clf = GridSearchCV(MLPClassifier(), tuning_params, cv=3, return_train_score=False)
     clf.fit(X_train, y_train)
     best_params = clf.best_params_
     # create our final model and configure it with the best params
@@ -109,18 +111,20 @@ def create_and_tune_nn(X_train, y_train):
     return neural_network
 
 """Use grid search to tune a support vector model and return it"""
-def create_and_tune_svc(X_train, y_train):
+def create_and_init_svc(X_train, y_train, tune_params):
+    if not tune_params:
+        return SVC()
     # define the hyperparameters we want to evaluate
-    tuning_params = {'C': [1, 10, 20], 'kernel': ['rbf', 'linear']}
+    tuning_params = {'C': [1, 2, 5, 10, 20], 'gamma': ['scale', 'auto'], 'kernel': ['rbf', 'linear', 'poly']}
     # use grid search to find the best combination of hyperparameters for our model
-    clf = GridSearchCV(SVC(gamma='auto'), tuning_params, n_jobs=-1, cv=5, return_train_score=False)
+    clf = GridSearchCV(SVC(), tuning_params, cv=3, return_train_score=False)
     clf.fit(X_train, y_train)
     best_params = clf.best_params_
     # create our final model and configure it with the best params
     support_vector_machine = SVC(
-        gamma='auto', 
-        C=1.0,#best_params['C'], 
-        kernel=best_params['kernel']
+        gamma=best_params['gamma'],
+        kernel=best_params['kernel'],
+        C=best_params['C']
     )
     return support_vector_machine
 
@@ -185,6 +189,20 @@ def select_best_model(models, X, y, no_of_folds=10):
     print('Chosen model: %s' % best_model)
     return best_model
 
+"""Helper function for loading a single png image from file"""
+def load_image_from_file(filename):
+    image_data = plt.imread(filename)
+    image_data = image_data.reshape(784, 3)
+    new_image = []
+    for p in image_data:
+        r, g , b = p[0], p[1], p[2]
+        # we only care about one channel, so combine all RGB values
+        grayscale = (1 - ((r + b + g) / 3))
+        # normalize (pixel value ranges from 0 - 255)
+        grayscale = grayscale * 255
+        new_image.append(grayscale)
+    return new_image
+
 """Helper function for displaying image to user"""
 def show_image(datapoint):
     if type(datapoint) is not np.array:
@@ -204,8 +222,10 @@ def show_image(datapoint):
 
 # we want to benchmark program execution time, so keep track of start time
 start_time = time.time()
-# flag for determining if we want to downsample image or not (from 28*28 to 14*14)
+# flag for determining if we want to downsample images during preprocessing or not (from 28*28 to 14*14)
 should_downsample_images = True
+# flag for determining if we should tune the model parameters or not
+should_tune_params = False
 
 # load data and do preprocessing
 X, y = load_and_preprocess_data(
@@ -215,42 +235,23 @@ X, y = load_and_preprocess_data(
 )
 
 # create our 3 candidate models
-models = create_candidate_models(X, y)
+models = create_candidate_models(X, y, tune_params=should_tune_params)
 
 # select the model with the best CV mean score
-best_model = select_best_model(models, X, y, no_of_folds=10)
+best_model = select_best_model(models, X, y, no_of_folds=5)
 
 # now that we have our best model, we can fit it with the data
 best_model = best_model.fit(X, y)
 
-image = [
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,129,103,155,116,155,233,155,214,255,
-    231,149,19,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,250,254,253,253,253,253,254,253,253,
-    254,253,224,32,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,123,188,188,188,188,95,89,89,89,89,
-    177,253,235,19,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,31,253,254,74,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,32,99,241,253,207,24,0,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,89,220,253,252,157,24,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    0,47,161,252,253,233,120,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,47,242,253,246,
-    170,11,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,86,253,254,242,115,73,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,35,226,253,253,253,253,244,123,26,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,0,28,87,148,190,249,249,253,229,103,3,0,0,0,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,6,94,188,253,190,16,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    0,0,0,4,146,254,70,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,80,253,163,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,168,254,164,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,50,232,253,132,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,38,
-    232,253,221,30,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,47,207,254,253,84,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,93,249,253,231,107,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,60,142,253,253,226,39,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-]
-# predict the class of the above image
+# load unseen data (digits written on paper by myself)
+img_three = load_image_from_file('three.png')
+img_five = load_image_from_file('five.png')
+img_nine = load_image_from_file('nine.png')
+
+# predict the class of the above images
 predictions = preprocess_and_predict(
     model=best_model, 
-    datapoints=[image], 
+    datapoints=[img_three, img_five, img_nine], 
     should_downsample=should_downsample_images
 )
 
