@@ -1,0 +1,1 @@
+To run the program/pipeline simply type "python digitrecognizer.py" in any Python enabled console. Note also that downsampling of images (preprocessing) and parameter tuning can be toggled by manipulating the flags on lines 250 and 252 respectively.
