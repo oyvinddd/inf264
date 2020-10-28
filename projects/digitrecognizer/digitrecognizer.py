@@ -3,17 +3,16 @@ from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score
 from sklearn.neural_network import MLPClassifier
-from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
 import matplotlib.pyplot as plt
-import pandas as pd
 import numpy as np
 import math
 import time
 
 """Load data from file and do preprocessing"""
 def load_and_preprocess_data(images_file, labels_file, should_downsample=False):
+    print('Step 1. Loading and Preprocessing...')
     # read images and their respective classes from csv
     X = np.loadtxt(open(images_file, 'rb'), delimiter=',', dtype=int)
     y = np.loadtxt(open(labels_file, 'rb'), delimiter=',', dtype=int)
@@ -53,9 +52,7 @@ def downsample_image(image_row):
     return downsampled_image.reshape(196)
 
 """Create and initialize all three candidate models"""
-def create_candidate_models(X, y, tune_params=True):
-    # split data set into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=667)
+def create_candidate_models(X_train, y_train, tune_params=True):
     # decision tree
     dt = create_and_init_dt(X_train, y_train, tune_params)
     # neural network
@@ -70,61 +67,74 @@ def create_candidate_models(X, y, tune_params=True):
     return models
 
 """Use grid search to tune a decision tree model and return it"""
-def create_and_init_dt(X_train, y_train, tune_params):
+def create_and_init_dt(X_train, y_train, tune_params, random_seed=667):
     if not tune_params:
-        return DecisionTreeClassifier(random_state=40)
+        return DecisionTreeClassifier(random_state=random_seed)
     # define the hyperparameters we want to evaluate
-    tuning_params = {'criterion': ['gini', 'entropy']}
+    tuning_params = {
+        'ccp_alpha': [0.0, 0.001, 0.005, 0.01, 0.05, 0.1, 1.0],
+        'criterion': ['gini', 'entropy'],
+        'splitter': ['best', 'random']
+    }
     # use grid search to find the best combination of hyperparameters for our model
-    clf = GridSearchCV(DecisionTreeClassifier(random_state=40), tuning_params, cv=3, return_train_score=False)
+    clf = GridSearchCV(DecisionTreeClassifier(random_state=random_seed), tuning_params, cv=3, return_train_score=False)
     clf.fit(X_train, y_train)
     best_params = clf.best_params_
+    print('Using the following parameters for decision tree: %s' % str(best_params))
     # create our final model and configure it with the best params
     decision_tree = DecisionTreeClassifier(
-        ccp_alpha=0.001,
-        random_state=40,
-        criterion=best_params['criterion']
+        ccp_alpha=best_params['ccp_alpha'],
+        criterion=best_params['criterion'],
+        random_state=random_seed
     )
     return decision_tree
 
 """Use grid search to tune a neural network model and return it"""
-def create_and_init_nn(X_train, y_train, tune_params):
+def create_and_init_nn(X_train, y_train, tune_params, random_seed=667):
     if not tune_params:
-        return MLPClassifier(max_iter=500)
+        return MLPClassifier(max_iter=500, random_state=random_seed)
     # define the hyperparameters we want to evaluate
     tuning_params = {
-        'activation': ['tanh', 'relu'],
+        'activation': ['tanh', 'relu', 'logistic', 'identity'],
         'solver': ['sgd', 'adam'],
         'learning_rate': ['constant','adaptive']
     }
     # use grid search to find the best combination of hyperparameters for our model
-    clf = GridSearchCV(MLPClassifier(), tuning_params, cv=3, return_train_score=False)
+    clf = GridSearchCV(MLPClassifier(max_iter=500, random_state=random_seed), tuning_params, cv=3, return_train_score=False)
     clf.fit(X_train, y_train)
     best_params = clf.best_params_
+    print('Using the following parameters for neural network: %s' % str(best_params))
     # create our final model and configure it with the best params
     neural_network = MLPClassifier(
         activation=best_params['activation'],
         learning_rate=best_params['learning_rate'],
         solver=best_params['solver'],
+        random_state=random_seed,
         max_iter=500
     )
     return neural_network
 
 """Use grid search to tune a support vector model and return it"""
-def create_and_init_svc(X_train, y_train, tune_params):
+def create_and_init_svc(X_train, y_train, tune_params, random_seed=667):
     if not tune_params:
-        return SVC()
+        return SVC(random_state=random_seed)
     # define the hyperparameters we want to evaluate
-    tuning_params = {'C': [1, 2, 5, 10, 20], 'gamma': ['scale', 'auto'], 'kernel': ['rbf', 'linear', 'poly']}
+    tuning_params = {
+        'gamma': ['scale', 'auto'], 
+        'kernel': ['rbf', 'linear', 'poly'],
+        'C': [1, 2, 5, 10, 20]
+    }
     # use grid search to find the best combination of hyperparameters for our model
-    clf = GridSearchCV(SVC(), tuning_params, cv=3, return_train_score=False)
+    clf = GridSearchCV(SVC(random_state=random_seed), tuning_params, cv=3, return_train_score=False)
     clf.fit(X_train, y_train)
     best_params = clf.best_params_
+    print('Using the following parameters for support vector machine: %s' % str(best_params))
     # create our final model and configure it with the best params
     support_vector_machine = SVC(
         gamma=best_params['gamma'],
         kernel=best_params['kernel'],
-        C=best_params['C']
+        C=best_params['C'],
+        random_state=random_seed
     )
     return support_vector_machine
 
@@ -133,7 +143,7 @@ def plot_decision_tree_alphas(X, y):
     # split data set into training and testing sets
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=667)
     # create decision tree classifier
-    tree = DecisionTreeClassifier(random_state=40)
+    tree = DecisionTreeClassifier(random_state=667)
     # do cost complexity pruning
     path = tree.cost_complexity_pruning_path(X_train, y_train)
     alphas = path.ccp_alphas
@@ -141,7 +151,7 @@ def plot_decision_tree_alphas(X, y):
     train_acc, test_acc = [], []
     # create a decision tree for each of our alpha values and store the training and testing accuracies
     for alpha in alphas:
-        tree = DecisionTreeClassifier(random_state=0, ccp_alpha=alpha)
+        tree = DecisionTreeClassifier(random_state=667, ccp_alpha=alpha)
         tree = tree.fit(X_train, y_train)
         y_train_pred = tree.predict(X_train)
         y_test_pred = tree.predict(X_test)
@@ -158,20 +168,19 @@ def plot_decision_tree_alphas(X, y):
     plt.show()
 
 """Preprocess data points and do predictions using a given model"""
-def preprocess_and_predict(model, datapoints, should_downsample=False):
+def preprocess_and_predict(model, datapoints, convert_to_binary=False, should_downsample=False):
     new_datapoints = []
     # convert pixel values to binary so it matches the training set values
-    for datapoint in datapoints:
-        datapoint = to_binary_values(datapoint)
-        if should_downsample:
-            new_datapoints.append(downsample_image(datapoint))
-    # return a list of predicitons
+    if convert_to_binary:
+        [to_binary_values(dp) for dp in datapoints]
     if should_downsample:
-        return model.predict(new_datapoints)
+        [downsample_image(dp) for dp in datapoints]
+    # return a list of predictions
     return model.predict(datapoints)
 
 """We use cross-validation to help us select the best model"""
 def select_best_model(models, X, y, no_of_folds=10):
+    print('Step 2. Model selection...')
     best_score, best_model = 0, None
     # the avg. testing accuracy (aka the cross validated acc.) is used as the estimate 
     # of out of sample accuracy. The cross_val_score function takes care of splitting 
@@ -188,6 +197,21 @@ def select_best_model(models, X, y, no_of_folds=10):
     # return the model with the best mean score
     print('Chosen model: %s' % best_model)
     return best_model
+
+"""Evaluate the given model by calculating accuracy score"""
+def evaluate_model(model, X_train, X_test, y_train, y_test, preprocess=False):
+    print('Step 3. Model evaluation...')
+    # fit model wit training data
+    model = model.fit(X_train, y_train)
+    # do predicitons on unseen data (testing set)
+    y_pred = preprocess_and_predict(
+        model=model, 
+        datapoints=X_test,
+        convert_to_binary=preprocess,
+        should_downsample=preprocess
+    )
+    # calculate the accuracy classification score on the test set
+    return accuracy_score(y_test, y_pred)
 
 """Helper function for loading a single png image from file"""
 def load_image_from_file(filename):
@@ -225,36 +249,32 @@ start_time = time.time()
 # flag for determining if we want to downsample images during preprocessing or not (from 28*28 to 14*14)
 should_downsample_images = True
 # flag for determining if we should tune the model parameters or not
-should_tune_params = False
+should_tune_params = True
 
 # load data and do preprocessing
 X, y = load_and_preprocess_data(
-    images_file='handwritten_digits_images_small.csv',
-    labels_file='handwritten_digits_labels_small.csv',
+    images_file='handwritten_digits_images.csv',
+    labels_file='handwritten_digits_labels.csv',
     should_downsample=should_downsample_images
 )
 
-# create our 3 candidate models
-models = create_candidate_models(X, y, tune_params=should_tune_params)
+# split data set into training and testing sets
+random_seed = 667
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, shuffle=True, random_state=random_seed)
+
+# create our 3 candidate models and hand them some training data to work with
+models = create_candidate_models(X_train, y_train, tune_params=should_tune_params)
 
 # select the model with the best CV mean score
-best_model = select_best_model(models, X, y, no_of_folds=5)
+best_model = select_best_model(models, X_train, y_train, no_of_folds=5)
 
-# now that we have our best model, we can fit it with the data
-best_model = best_model.fit(X, y)
+# evaluate performance of the best model on unseen data
+acc_score = evaluate_model(best_model, X_train, X_test, y_train, y_test)
+print('Accuracy score : %f' % acc_score)
+print('Program execution time: %fs' % (time.time() - start_time))
 
 # load unseen data (digits written on paper by myself)
-img_three = load_image_from_file('three.png')
-img_five = load_image_from_file('five.png')
-img_nine = load_image_from_file('nine.png')
-
-# predict the class of the above images
-predictions = preprocess_and_predict(
-    model=best_model, 
-    datapoints=[img_three, img_five, img_nine], 
-    should_downsample=should_downsample_images
-)
-
-print('Predictions: %s' % str(predictions))
-print('Program execution time: %fs' % (time.time() - start_time))
+# img_three = load_image_from_file('three.png')
+# img_five = load_image_from_file('five.png')
+# img_nine = load_image_from_file('nine.png')
 
